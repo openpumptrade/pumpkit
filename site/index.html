@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pumpkit — Solana / pump.fun building blocks</title>
+<meta name="description" content="Claims, buys, burns, airdrops, holder snapshots, launches and fee sharing for Solana and pump.fun. Plain JavaScript, pulled out of engines running in production.">
+<meta property="og:title" content="pumpkit">
+<meta property="og:description" content="Solana / pump.fun building blocks, pulled out of engines running in production.">
+<meta property="og:image" content="assets/banner.svg">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0f0c; --bg2:#0f1612; --panel:#131c16; --shadow:#050806; --line:#24382b; --line2:#35513e;
+  --txt:#e8f5ea; --mut:#8fa898; --dim:#5f7868;
+  --g:#4ade80; --gd:#16a34a; --gdd:#166534; --gl:#bbf7d0; --amb:#fbbf24; --red:#f87171; --blu:#7dd3fc; --vio:#c4b5fd;
+  --px:4px;
+  --pixel:"Press Start 2P",ui-monospace,Menlo,monospace;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:15px;line-height:1.65;
+  background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:16px 16px}
+a{color:var(--g);text-decoration:none}
+a:hover{color:var(--gl)}
+img{max-width:100%;height:auto;display:block}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+h1,h2,h3,.px{font-family:var(--pixel);font-weight:400;line-height:1.5;letter-spacing:0}
+h2{font-size:clamp(15px,2.6vw,22px);margin:0 0 10px;text-wrap:balance}
+h3{font-size:12px;margin:0 0 10px;color:var(--txt)}
+p{margin:0 0 14px;color:var(--mut);max-width:68ch}
+.kicker{font-family:var(--pixel);font-size:10px;color:var(--g);margin:0 0 14px;display:flex;align-items:center;gap:10px}
+.kicker::before{content:"";width:8px;height:8px;background:var(--g);box-shadow:12px 0 0 var(--gd),24px 0 0 var(--gdd);margin-right:24px}
+
+/* the pixel box: stepped corners from four offset shadows, plus a hard drop shadow */
+.box{background:var(--panel);position:relative;margin:var(--px);
+  box-shadow:0 calc(-1*var(--px)) 0 0 var(--c,var(--line2)),0 var(--px) 0 0 var(--c,var(--line2)),calc(-1*var(--px)) 0 0 0 var(--c,var(--line2)),var(--px) 0 0 0 var(--c,var(--line2)),
+             calc(2*var(--px)) calc(2*var(--px)) 0 0 var(--shadow),var(--px) calc(3*var(--px)) 0 0 var(--shadow),calc(3*var(--px)) var(--px) 0 0 var(--shadow)}
+.btn{font-family:var(--pixel);font-size:11px;padding:14px 18px;border:0;cursor:pointer;display:inline-block;color:var(--bg);background:var(--g);margin:var(--px);
+  box-shadow:0 calc(-1*var(--px)) 0 0 var(--gl),0 var(--px) 0 0 var(--gdd),calc(-1*var(--px)) 0 0 0 var(--gl),var(--px) 0 0 0 var(--gdd),calc(2*var(--px)) calc(2*var(--px)) 0 0 var(--shadow)}
+.btn:hover{color:var(--bg);background:var(--gl)}
+.btn:active{transform:translate(var(--px),var(--px));box-shadow:0 calc(-1*var(--px)) 0 0 var(--gl),0 var(--px) 0 0 var(--gdd),calc(-1*var(--px)) 0 0 0 var(--gl),var(--px) 0 0 0 var(--gdd)}
+.btn.ghost{background:var(--panel);color:var(--txt);box-shadow:0 calc(-1*var(--px)) 0 0 var(--line2),0 var(--px) 0 0 var(--line2),calc(-1*var(--px)) 0 0 0 var(--line2),var(--px) 0 0 0 var(--line2),calc(2*var(--px)) calc(2*var(--px)) 0 0 var(--shadow)}
+.btn.ghost:hover{background:var(--bg2);color:var(--g)}
+:focus-visible{outline:4px solid var(--amb);outline-offset:4px}
+
+nav{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:4px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:20px;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--pixel);font-size:13px;color:var(--txt)}
+.brand img{width:28px;height:28px;image-rendering:pixelated}
+.brand b{color:var(--g);font-weight:400}
+nav .links{margin-left:auto;display:flex;gap:20px;font-family:var(--pixel);font-size:9px}
+nav .links a{color:var(--mut)} nav .links a:hover{color:var(--g)}
+
+header.hero{padding:64px 0 40px}
+.hero .wrap{display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center}
+.hero h1{font-size:clamp(34px,8vw,76px);margin:0 0 20px;line-height:1.1}
+.hero h1 b{color:var(--g);font-weight:400}
+.hero .tag{font-family:var(--pixel);font-size:clamp(9px,1.5vw,12px);color:var(--mut);line-height:2;margin-bottom:28px;max-width:none}
+.hero .logo{width:min(260px,40vw);image-rendering:pixelated;animation:bob 1.6s steps(2) infinite}
+@keyframes bob{50%{transform:translateY(-8px)}}
+.install{display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;max-width:520px;margin-bottom:24px}
+.install code{flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font-size:14px;color:var(--txt)}
+.install code::before{content:"$ ";color:var(--g);font-weight:700}
+.install button{font-family:var(--pixel);font-size:9px;background:var(--bg);color:var(--g);border:0;padding:10px 12px;cursor:pointer;box-shadow:0 0 0 4px var(--line2)}
+.install button:hover{background:var(--g);color:var(--bg)}
+.cta{display:flex;flex-wrap:wrap;gap:14px}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:24px 0 8px}
+.stat{padding:18px 16px}
+.stat b{font-family:var(--pixel);font-size:clamp(20px,4vw,30px);color:var(--txt);display:block;font-weight:400;font-variant-numeric:tabular-nums}
+.stat span{font-family:var(--pixel);font-size:8px;color:var(--mut)}
+
+section{padding:56px 0}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:24px}
+.card{padding:22px 22px 12px}
+.card p{font-size:14px}
+.card.g{--c:var(--gd)} .card.b{--c:#3b82a6} .card.a{--c:#a67c0f} .card.r{--c:#a34848} .card.v{--c:#7c6cc4}
+
+.recipe{margin-top:36px}
+.recipe .head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;margin-bottom:6px}
+.recipe .head span{font-size:13px;color:var(--dim)}
+.recipe img{margin:14px 0}
+pre{margin:0;padding:18px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.6;color:var(--txt);tab-size:2}
+pre .c{color:var(--dim)} pre .k{color:var(--vio)} pre .f{color:var(--g)} pre .s{color:var(--amb)}
+details{margin:0 var(--px)}
+summary{font-family:var(--pixel);font-size:9px;color:var(--g);cursor:pointer;padding:10px 0;list-style:none}
+summary::before{content:"+ "} details[open] summary::before{content:"- "}
+summary::-webkit-details-marker{display:none}
+
+.gotchas{counter-reset:g}
+.gotchas .card{counter-increment:g}
+.gotchas h3::before{content:counter(g,decimal-leading-zero) " ";color:var(--amb)}
+.gotchas h3{line-height:1.8}
+
+footer{border-top:4px solid var(--line);padding:32px 0 48px;color:var(--dim);font-size:13px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+footer img{width:32px;image-rendering:pixelated}
+footer .r{margin-left:auto;display:flex;gap:20px}
+
+@media (max-width:760px){
+  .hero .wrap{grid-template-columns:1fr}.hero .logo{order:-1;width:120px}
+  .grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}
+  nav .links a:not(.keep){display:none}
+  section{padding:40px 0}
+}
+@media (prefers-reduced-motion:reduce){.hero .logo{animation:none}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="assets/logo.svg" alt="" width="28" height="28"><span>pump<b>kit</b></span></a>
+    <div class="links">
+      <a href="#why">Why</a><a href="#recipes">Recipes</a><a href="#modules">Modules</a><a href="#gotchas">Gotchas</a><a href="#cli">CLI</a>
+      <a class="keep" href="https://github.com/openpumptrade/pumpkit">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <h1>pump<b>kit</b></h1>
+      <p class="tag">Solana / pump.fun building blocks,<br>pulled out of engines running in production.</p>
+      <div class="box install">
+        <code id="cmd">npm i github:openpumptrade/pumpkit</code>
+        <button type="button" id="copy" aria-label="Copy install command">COPY</button>
+      </div>
+      <div class="cta">
+        <a class="btn" href="https://github.com/openpumptrade/pumpkit">View on GitHub</a>
+        <a class="btn ghost" href="#recipes">See the recipes</a>
+      </div>
+    </div>
+    <img class="logo" src="assets/logo.svg" alt="pumpkit logo: a pixel toolbox with a rising chart on its front" width="260" height="260">
+  </div>
+  <div class="wrap">
+    <div class="stats">
+      <div class="box stat"><b>17</b><span>MODULES</span></div>
+      <div class="box stat"><b>126</b><span>EXPORTS</span></div>
+      <div class="box stat"><b>14</b><span>GOTCHAS BAKED IN</span></div>
+      <div class="box stat"><b>0</b><span>BUILD STEPS</span></div>
+    </div>
+  </div>
+</header>
+
+<section id="why">
+  <div class="wrap">
+    <div class="kicker">WHY</div>
+    <h2>The same dozen operations, written once</h2>
+    <p>Every launch needs to claim fees, buy, burn, snapshot holders and airdrop. When each project carries its own copy, a bug fixed in one stays broken in the rest. pumpkit is those operations as plain functions, with every production incident already handled.</p>
+    <div class="grid">
+      <div class="box card g"><h3>Plain JavaScript</h3><p>ESM, no build step, no TypeScript toolchain. Install it, or copy <code>src/</code> into your project and read every line.</p></div>
+      <div class="box card b"><h3>ctx first</h3><p>Every function takes a context, then plain values. Nothing reads <code>process.env</code> behind your back.</p></div>
+      <div class="box card a"><h3>bigint at the edge</h3><p>Amounts are raw units as <code>bigint</code>. Floats appear in logs only, so nothing is lost to rounding.</p></div>
+      <div class="box card r"><h3>No "burn everything"</h3><p>You burn, sell and send what you measured, never the wallet balance. The dev bag stays where it is.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="recipes">
+  <div class="wrap">
+    <div class="kicker">RECIPES</div>
+    <h2>Five things you can ship today</h2>
+    <p>Each recipe is a few calls. The diagrams show what happens on chain; the code is what you write.</p>
+
+    <div class="recipe">
+      <div class="head"><h3>Buy any coin, wherever it trades</h3><span>buyMeasured · sellAny</span></div>
+      <img src="assets/router.svg" alt="buyAny routes a buy to the bonding curve, PumpSwap or Jupiter and falls back on failure" width="920" height="416" loading="lazy">
+      <div class="box"><pre><span class="k">const</span> buy = <span class="k">await</span> <span class="f">buyMeasured</span>(ctx, { wallet, mint, lamports: <span class="s">500_000_000n</span> });
+<span class="c">// { sig, venue: "curve" | "pumpswap" | "jupiter", spentLamports, boughtRaw }</span>
+
+<span class="k">await</span> <span class="f">sellAny</span>(ctx, { wallet, mint, tokenAmountRaw: buy.boughtRaw });</pre></div>
+    </div>
+
+    <div class="recipe">
+      <div class="head"><h3>Buyback and burn</h3><span>buybackBurnRound · createScheduler</span></div>
+      <img src="assets/pipeline.svg" alt="Claim creator fees, one measured buy, burn only the delta" width="920" height="324" loading="lazy">
+      <div class="box"><pre><span class="k">const</span> scheduler = <span class="f">createScheduler</span>({
+  intervalSec: <span class="s">180</span>,
+  run: () => <span class="f">buybackBurnRound</span>(ctx, { wallet, mint, ledger }),
+});
+scheduler.<span class="f">start</span>();</pre></div>
+    </div>
+
+    <div class="recipe">
+      <div class="head"><h3>Claim, buy a reward coin, airdrop it</h3><span>claimBuyAirdropRound</span></div>
+      <img src="assets/airdrop.svg" alt="Holder snapshot, pro rata split, batched delivery with per-wallet outcomes" width="920" height="416" loading="lazy">
+      <div class="box"><pre><span class="k">const</span> r = <span class="k">await</span> <span class="f">claimBuyAirdropRound</span>(ctx, {
+  wallet, mint, rewardMint,            <span class="c">// rewardMint unset: pays SOL directly</span>
+  snapshotOpts: { maxHolders: <span class="s">4000</span> },
+});
+console.<span class="f">log</span>(r.note, r.txs);</pre></div>
+    </div>
+
+    <div class="recipe">
+      <div class="head"><h3>Trustless launch</h3><span>buildLaunchTxs · verifyLaunch · relaySigned</span></div>
+      <img src="assets/launch.svg" alt="Sequence between browser, server and Solana" width="920" height="500" loading="lazy">
+      <div class="box"><pre><span class="c">// server: unsigned bytes only</span>
+<span class="k">const</span> built = <span class="k">await</span> <span class="f">buildLaunchTxs</span>(ctx, { user, mint, name, symbol, uri, feeLamports, treasury });
+
+<span class="c">// browser, before the wallet popup</span>
+<span class="k">const</span> checks = <span class="k">await</span> <span class="f">verifyLaunch</span>(connection, txs, lookupTable, expected);
+<span class="k">if</span> (!<span class="f">allOk</span>(checks)) <span class="k">throw new</span> <span class="f">Error</span>(<span class="s">"bytes do not match"</span>);</pre></div>
+    </div>
+
+    <div class="recipe">
+      <div class="head"><h3>A fee split nobody can redirect</h3><span>writeFeeSharing · distributeSharedFees</span></div>
+      <img src="assets/fee-split.svg" alt="Creator fees flow into a locked sharing config, 90 percent to the engine wallet and 10 percent to the main wallet" width="920" height="304" loading="lazy">
+      <div class="box"><pre><span class="k">await</span> <span class="f">writeFeeSharing</span>(ctx, { wallet: engine, mint, shareholders: [
+  { address: engineAddress, shareBps: <span class="s">9000</span> },
+  { address: mainWallet,    shareBps: <span class="s">1000</span> },
+] });                                  <span class="c">// locked on chain, forever</span></pre></div>
+    </div>
+  </div>
+</section>
+
+<section id="modules">
+  <div class="wrap">
+    <div class="kicker">MODULES</div>
+    <h2>One concern per file</h2>
+    <p>Import the whole kit, or one module at a time: <code>pumpkit/tx</code>, <code>pumpkit/holders</code>, <code>pumpkit/pumpfun/fees</code>.</p>
+    <img src="assets/modules.svg" alt="Module map with the number of exports per module" width="920" height="446" loading="lazy" style="margin-top:20px">
+  </div>
+</section>
+
+<section id="gotchas">
+  <div class="wrap">
+    <div class="kicker">GOTCHAS</div>
+    <h2>Mistakes you do not have to make</h2>
+    <p>Each of these cost real money or a production incident. The fix is already in the code. The README lists all fourteen.</p>
+    <div class="grid gotchas">
+      <div class="box card a"><h3>Token-2022, not classic SPL</h3><p>pump.fun mints use Token-2022. Assume the classic program and you compute the wrong token account: the buy confirms, no tokens arrive. Always <code>mintProgramId()</code>.</p></div>
+      <div class="box card a"><h3>Never act on the whole balance</h3><p>The engine wallet often holds the dev bag. Burning "everything" burns that too. Measure before and after, then act on the difference.</p></div>
+      <div class="box card a"><h3>v2 pools hold your fees</h3><p>PumpSwap v2 pools park creator fees inside the pool until someone sweeps them. <code>claimCreatorFees({ mint })</code> sweeps first.</p></div>
+      <div class="box card a"><h3>"Expired" does not mean failed</h3><p>A slow RPC reports block height exceeded for a transaction that landed. pumpkit checks the signature before throwing, so a retry never buys twice.</p></div>
+      <div class="box card a"><h3>Redeploys overlap</h3><p>Two containers run together for a few seconds. An advisory lock on a reserved connection and a crash-safe ledger keep a round from running twice.</p></div>
+      <div class="box card a"><h3>Airdrop rent adds up</h3><p>Opening a token account costs about 0.002 SOL per holder. pumpkit pays it once per wallet, and only when the drop is worth it.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="cli">
+  <div class="wrap">
+    <div class="kicker">CLI</div>
+    <h2>The tools from a terminal</h2>
+    <p>For operations and for testing a wallet or coin by hand. Everything that moves funds needs <code>--yes</code>.</p>
+    <img src="assets/demo-cli.svg" alt="pumpkit CLI: fees, claim, buy, burn" width="920" height="384" loading="lazy" style="margin-top:20px">
+    <div class="cta" style="margin-top:28px">
+      <a class="btn" href="https://github.com/openpumptrade/pumpkit#quick-start">Quick start</a>
+      <a class="btn ghost" href="https://github.com/openpumptrade/pumpkit/tree/main/examples">Browse the examples</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <img src="assets/logo.svg" alt="" width="32" height="32">
+    <span>pumpkit · MIT · Node 20+</span>
+    <div class="r"><a href="https://github.com/openpumptrade/pumpkit">GitHub</a><a href="#top">Back to top</a></div>
+  </div>
+</footer>
+
+<script>
+const btn = document.getElementById("copy");
+btn.addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(document.getElementById("cmd").textContent); btn.textContent = "COPIED"; }
+  catch { btn.textContent = "CTRL+C"; }
+  setTimeout(() => (btn.textContent = "COPY"), 1600);
+});
+</script>
+</body>
+</html>
