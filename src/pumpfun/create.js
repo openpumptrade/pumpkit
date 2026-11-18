@@ -23,10 +23,33 @@ export async function uploadIpfs({ name, symbol, description, imageBuffer, image
   if (website) form.append("website", website);
   form.append("showName", "true");
   const res = await fetch("https://pump.fun/api/ipfs", { method: "POST", body: form, headers: { "user-agent": UA["user-agent"] }, signal: AbortSignal.timeout(30_000) });
-  if (!res.ok) throw new Error(`IPFS upload failed (${res.status}): ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) {
+    const body = await res.text();
+    // pump.fun sits behind a Cloudflare challenge that servers cannot pass — fall back to `pumpMetadata`
+    const blocked = /Just a moment|challenge/i.test(body);
+    const err = new Error(`IPFS upload failed (${res.status}): ${blocked ? "blocked by pump.fun's Cloudflare challenge" : body.replace(/<[^>]+>/g, " ").trim().slice(0, 200)}`);
+    err.code = blocked ? "IPFS_BLOCKED" : "IPFS_FAILED";
+    throw err;
+  }
   const j = await res.json();
   if (!j.metadataUri) throw new Error("IPFS upload returned no metadata URI");
   return { metadataUri: j.metadataUri, imageUri: j.metadata?.image || "" };
+}
+
+/// The metadata document pump.fun's uploader writes. A coin's URI may point at any public URL, so when
+/// `uploadIpfs` is blocked, host this JSON (and the image) yourself and pass that URL as the `uri`.
+export function pumpMetadata({ name, symbol, description, image, twitter, telegram, website }) {
+  return {
+    name,
+    symbol,
+    description: description || "",
+    image: image || "",
+    showName: true,
+    createdOn: "https://pump.fun",
+    ...(twitter ? { twitter } : {}),
+    ...(telegram ? { telegram } : {}),
+    ...(website ? { website } : {}),
+  };
 }
 
 /// create_v2 for a coin paired with SOL (default) or quoted in a custom pair, optionally with its own creator

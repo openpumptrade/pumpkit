@@ -204,7 +204,7 @@ Run without arguments for the full list. Everything that moves funds needs `--ye
 | `pumpfun/curve` | `pumpGlobals`, `taxConfig`, `SOL_QUOTE`, `resolveQuote`, `fetchQuoteCatalog`, `loadCurve`, `isGraduated`, `estimateCurveBuy`, `curveBuy/curveSell`, `buildCurveBuy/buildCurveSell` (unsigned) |
 | `pumpfun/pumpswap` | `pumpswapBuy/pumpswapSell`, `buildPumpswapBuy/Sell`, `poolOf` |
 | `pumpfun/fees` | `creatorVaultBalances`, `claimInstructions`, `claimCreatorFees` (pass `mint` to also sweep a v2 pool's bucket), `sweepCreatorFeeIx`, `poolCreatorFeeBucket`; fee sharing: `feeSharingInstructions`, `writeFeeSharing`, `readSharingConfig`, `sharedFeesWaiting`, `distributeSharedFees` (permissionless) |
-| `pumpfun/create` | `uploadIpfs`, `buildCreate` (SOL or custom pair, tax), `simulateCreate`, `createCoin` (custodial + dev buy → user), `buildLaunchTxs` (trustless, unsigned), `staticLaunchAccounts` (ALT contents) |
+| `pumpfun/create` | `uploadIpfs`, `pumpMetadata` (self-hosted fallback), `buildCreate` (SOL or custom pair, tax), `simulateCreate`, `createCoin` (custodial + dev buy → user), `buildLaunchTxs` (trustless, unsigned), `staticLaunchAccounts` (ALT contents) |
 | `pumpfun/market` | `fetchCoinInfo` (DexScreener fallback — pump.fun's `/coins/<mint>` is gone), `fetchMarkets`, `searchTokens`, `fetchCandles`, `fetchTrades`, `fetchTopHoldersList` |
 | `pumpfun/verify` | `verifyLaunch` — browser-side check of the launch bytes BEFORE the wallet signs (pure web3.js) |
 
@@ -228,6 +228,7 @@ Each one cost real money or a production incident.
 12. **v2 PumpSwap pools park creator fees inside the pool** until someone calls `sweep_creator_fee`. 6.3 SOL sat unclaimed on $SLINGFOLIO. `claimCreatorFees({mint})` and `distributeSharedFees` sweep first; changing fee shares on a graduated coin needs the sweep + claim in the SAME transaction (6081 CreatorFeesNotSwept).
 13. **A slow public RPC reports "block height exceeded" for a tx that landed.** `sendTx` / `jupiterSwap` check the signature status before throwing — retrying blindly would do the buy twice.
 14. **Some public RPCs refuse `getTokenAccountBalance`** → `tokenBalanceRaw` falls back to reading the token account bytes.
+15. **`pump.fun/api/ipfs` answers servers with a Cloudflare challenge** (403 "Just a moment…", seen Nov 2026, from home and datacenter IPs alike). `uploadIpfs` throws `code: "IPFS_BLOCKED"`; a coin's URI can be any public URL, so host the `pumpMetadata(...)` JSON and the image yourself and launch with that URL.
 
 ## Development
 
